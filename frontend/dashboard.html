@@ -6,56 +6,61 @@
     <title>Dashboard - Document Scanning System</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <div class="dashboard">
         <header class="dashboard-header">
             <nav class="dashboard-nav">
-                <div class="user-info">
-                    <span id="username">Loading...</span>
-                    <span class="credit-badge">
-                        Credits: <span id="credit-count">-</span>
-                    </span>
+                <div class="brand">
+                    <i class="fas fa-file-search brand-icon"></i>
+                    <h1>Credit-Based Document Scanning System</h1>
                 </div>
-                <button onclick="Auth.logout()" class="btn btn-secondary">Logout</button>
+                <div class="user-controls">
+                    <div class="credit-badge">
+                        <i class="fas fa-coins"></i>
+                        <span>Credits: <span id="credit-count">-</span></span>
+                    </div>
+                    <a href="profile.html" class="profile-icon" title="View Profile">
+                        <i class="fas fa-user-circle"></i>
+                    </a>
+                    <button onclick="Auth.logout()" class="btn btn-secondary">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
             </nav>
         </header>
 
         <main class="dashboard-content">
-            <!-- Document Upload Card -->
-            <div class="dashboard-card">
-                <h2 class="section-title">Upload Document</h2>
+            <div class="dashboard-card scanner-card">
+                <div class="card-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-scanner"></i>
+                        Document Scanner
+                    </h2>
+                </div>
+                <div class="scanner-description">
+                    <div class="info-box">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <p>Upload your document to check for similarities with our database.</p>
+                            <p>Each scan costs 1 credit.</p>
+                        </div>
+                    </div>
+                </div>
                 <div class="upload-area" id="upload-area" onclick="event.preventDefault();">
-                    <p>Drag & drop your document here or click to browse</p>
-                    <small>Only .txt files are supported</small>
+                    <div class="upload-content">
+                        <div class="upload-icon">
+                            <i class="fas fa-file-upload"></i>
+                        </div>
+                        <div class="upload-text">
+                            <p>Drag & drop your document here or click to browse</p>
+                            <small>Only .txt files are supported</small>
+                        </div>
+                    </div>
                     <input type="file" id="file-input" hidden accept=".txt" onchange="event.preventDefault();">
                 </div>
                 <div id="upload-status" class="upload-status"></div>
-            </div>
-
-            <!-- Scan History Card -->
-            <div class="dashboard-card">
-                <h2 class="section-title">Scan History</h2>
-                <ul class="scan-history" id="scan-history">
-                    <li>Loading scan history...</li>
-                </ul>
-            </div>
-
-            <!-- Credit Request Card -->
-            <div class="dashboard-card">
-                <h2 class="section-title">Request Credits</h2>
-                <form id="credit-request-form" class="credit-request-form" onsubmit="return false;">
-                    <div class="form-group">
-                        <label for="credits">Number of Credits</label>
-                        <input type="number" id="credits" name="credits" min="1" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="reason">Reason for Request</label>
-                        <textarea id="reason" name="reason" class="form-control" required 
-                            placeholder="Please explain why you need additional credits..."></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Request Credits</button>
-                </form>
             </div>
         </main>
     </div>
