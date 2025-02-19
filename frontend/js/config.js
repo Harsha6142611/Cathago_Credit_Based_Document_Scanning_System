@@ -28,7 +28,8 @@ const CONFIG = {
             DOCUMENT_STATS: '/api/admin/document-stats',
             CREDIT_REQUESTS: '/api/admin/credits/requests',
             APPROVE_CREDIT: (id) => `/api/admin/credits/approve/${id}`,
-            DENY_CREDIT: (id) => `/api/admin/credits/deny/${id}`
+            DENY_CREDIT: (id) => `/api/admin/credits/deny/${id}`,
+            MODIFY_CREDITS: (userId) => `/api/admin/users/${userId}/credits`,
         }
     }
 }; 

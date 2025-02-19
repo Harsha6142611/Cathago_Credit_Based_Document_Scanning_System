@@ -320,4 +320,50 @@ router.post('/credits/deny/:requestId', authMiddleware, adminMiddleware, async (
     }
 });
 
+// Add this new route to modify user credits
+router.post('/users/:userId/credits', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { credits, reason } = req.body;
+
+        if (!credits || isNaN(credits) || credits < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid credit amount'
+            });
+        }
+
+        const user = await User.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Update user credits
+        await user.update({ credits });
+
+        // Log the credit modification
+        console.log(`Admin ${req.user.username} modified credits for user ${user.username}: ${credits} (Reason: ${reason || 'No reason provided'})`);
+
+        res.json({
+            success: true,
+            message: 'Credits updated successfully',
+            user: {
+                id: user.id,
+                username: user.username,
+                credits: user.credits
+            }
+        });
+    } catch (error) {
+        console.error('Error modifying user credits:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error modifying user credits',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
 module.exports = router; 

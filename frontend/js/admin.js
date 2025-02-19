@@ -268,7 +268,24 @@ function displayTopUsers(data) {
             ${data.topUsers.map(user => `
                 <div class="user-card">
                     <p><strong>${user.username}</strong></p>
-                    <p>Credits: ${user.credits}</p>
+                    <div class="credits-section">
+                        <p>Current Credits: <span id="user-${user.id}-credits">${user.credits}</span></p>
+                        <div class="credit-controls">
+                            <input type="number" 
+                                id="credits-${user.id}" 
+                                min="0" 
+                                value="${user.credits}" 
+                                class="form-control credit-input">
+                            <input type="text" 
+                                id="reason-${user.id}" 
+                                placeholder="Reason for modification" 
+                                class="form-control reason-input">
+                            <button onclick="handleCreditModification(${user.id})" 
+                                class="btn btn-primary btn-small">
+                                Update Credits
+                            </button>
+                        </div>
+                    </div>
                     <p>Documents Scanned: ${user.scanCount}</p>
                 </div>
             `).join('')}
@@ -292,5 +309,41 @@ function setupDenyForm() {
             
             await handleCreditRequest(requestId, 'deny', reason);
         };
+    }
+}
+
+// Add this new function to handle credit modifications
+async function handleCreditModification(userId) {
+    try {
+        const creditsInput = document.getElementById(`credits-${userId}`);
+        const reasonInput = document.getElementById(`reason-${userId}`);
+        const credits = parseInt(creditsInput.value);
+        const reason = reasonInput.value.trim();
+
+        if (isNaN(credits) || credits < 0) {
+            alert('Please enter a valid number of credits');
+            return;
+        }
+
+        const response = await API.request(CONFIG.ROUTES.ADMIN.MODIFY_CREDITS(userId), {
+            method: 'POST',
+            body: JSON.stringify({ credits, reason })
+        });
+
+        if (response.success) {
+            // Update the displayed credit value
+            const creditDisplay = document.getElementById(`user-${userId}-credits`);
+            creditDisplay.textContent = credits;
+            
+            alert('Credits updated successfully');
+            
+            // Clear the reason input
+            reasonInput.value = '';
+        } else {
+            throw new Error(response.message || 'Failed to update credits');
+        }
+    } catch (error) {
+        console.error('Error modifying credits:', error);
+        alert('Error updating credits: ' + error.message);
     }
 } 

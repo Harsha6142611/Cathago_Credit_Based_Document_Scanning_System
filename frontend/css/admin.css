@@ -168,6 +168,35 @@
     gap: 10px;
 }
 
+.credits-section {
+    margin: 10px 0;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.credit-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.credit-input {
+    width: 100px;
+}
+
+.reason-input {
+    flex: 1;
+    min-width: 150px;
+}
+
+.btn-small {
+    padding: 4px 8px;
+    font-size: 0.9em;
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
     .stats-grid {
         grid-template-columns: 1fr;
@@ -176,5 +205,16 @@
     .credit-requests-list,
     .top-users-list {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 576px) {
+    .credit-controls {
+        flex-direction: column;
+    }
+
+    .credit-input,
+    .reason-input {
+        width: 100%;
     }
 } 
