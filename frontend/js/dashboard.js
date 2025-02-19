@@ -265,6 +265,9 @@ class Dashboard {
 
                     const response = await API.request(CONFIG.ROUTES.CREDITS.REQUEST, {
                         method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
                         body: JSON.stringify({
                             requestedCredits: credits,
                             reason: reason
@@ -275,13 +278,16 @@ class Dashboard {
                         alert('Credit request submitted successfully');
                         form.reset();
                         // Refresh the credit request status
-                        this.loadCreditRequestStatus();
+                        await this.loadCreditRequestStatus();
                     } else {
-                        alert(response.message || 'Failed to submit credit request');
+                        throw new Error(response.message || 'Failed to submit credit request');
                     }
                 } catch (error) {
                     console.error('Credit request error:', error);
-                    alert('Error submitting credit request. Please try again.');
+                    // Only show alert for non-fetch errors
+                    if (!error.message.includes('Failed to fetch')) {
+                        alert('Error submitting credit request. Please try again.');
+                    }
                 }
             });
         }

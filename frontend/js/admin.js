@@ -212,9 +212,22 @@ async function handleCreditRequest(requestId, action, reason = '') {
         });
 
         if (response.success) {
-            // Refresh the credit requests display
-            await loadAdminDashboard();
+            // Show success message first
             alert(`Request ${action}ed successfully`);
+            
+            // Then refresh the dashboard
+            const requestsResponse = await API.request(CONFIG.ROUTES.ADMIN.CREDIT_REQUESTS);
+            if (requestsResponse.success) {
+                displayCreditRequests(requestsResponse);
+                
+                // Also refresh overview stats
+                const overviewResponse = await API.request(CONFIG.ROUTES.ADMIN.OVERVIEW);
+                if (overviewResponse.success) {
+                    displayOverview(overviewResponse);
+                }
+            }
+
+            // Close deny dialog if it was a denial
             if (action === 'deny') {
                 closeDenyDialog();
             }
@@ -223,28 +236,10 @@ async function handleCreditRequest(requestId, action, reason = '') {
         }
     } catch (error) {
         console.error(`Error ${action}ing request:`, error);
-        alert(`Error ${action}ing request: ${error.message}`);
-    }
-}
-
-// Add this function to refresh admin dashboard
-async function loadAdminDashboard() {
-    try {
-        const [overviewResponse, requestsResponse] = await Promise.all([
-            API.request(CONFIG.ROUTES.ADMIN.OVERVIEW),
-            API.request(CONFIG.ROUTES.ADMIN.CREDIT_REQUESTS)
-        ]);
-
-        if (overviewResponse.success) {
-            displayOverview(overviewResponse.statistics);
+        // Only show alert if it's a real error, not just a refresh error
+        if (!error.message.includes('Failed to fetch')) {
+            alert(`Error ${action}ing request: ${error.message}`);
         }
-
-        if (requestsResponse.success) {
-            displayCreditRequests(requestsResponse);
-        }
-    } catch (error) {
-        console.error('Error loading admin dashboard:', error);
-        alert('Error refreshing dashboard data');
     }
 }
 
