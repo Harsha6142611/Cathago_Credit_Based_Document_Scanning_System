@@ -3,22 +3,11 @@ const router = express.Router();
 const { authMiddleware } = require('../middleware/authMiddleware');
 const { User, Document, CreditRequest } = require('../models');
 
-// Get user profile
+// Get basic user profile
 router.get('/profile', authMiddleware, async (req, res) => {
     try {
         const user = await User.findByPk(req.user.id, {
-            include: [
-                {
-                    model: Document,
-                    as: 'documents',
-                    attributes: ['id', 'filename', 'processingStatus', 'createdAt']
-                },
-                {
-                    model: CreditRequest,
-                    as: 'creditRequests',
-                    attributes: ['id', 'requestedCredits', 'status', 'reason', 'adminResponse', 'createdAt', 'updatedAt']
-                }
-            ]
+            attributes: ['id', 'username', 'credits', 'role']
         });
 
         if (!user) {
@@ -30,21 +19,55 @@ router.get('/profile', authMiddleware, async (req, res) => {
 
         res.json({
             success: true,
-            user: {
-                id: user.id,
-                username: user.username,
-                credits: user.credits,
-                role: user.role,
-                documents: user.documents,
-                creditRequests: user.creditRequests
-            }
+            user
         });
     } catch (error) {
         console.error('Error fetching user profile:', error);
         res.status(500).json({
             success: false,
-            message: 'Error fetching user profile',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            message: 'Error fetching user profile'
+        });
+    }
+});
+
+// Get user's credit requests
+router.get('/credit-requests', authMiddleware, async (req, res) => {
+    try {
+        const creditRequests = await CreditRequest.findAll({
+            where: { userId: req.user.id },
+            order: [['createdAt', 'DESC']]
+        });
+
+        res.json({
+            success: true,
+            creditRequests
+        });
+    } catch (error) {
+        console.error('Error fetching credit requests:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching credit requests'
+        });
+    }
+});
+
+// Get user's scan history
+router.get('/scan-history', authMiddleware, async (req, res) => {
+    try {
+        const documents = await Document.findAll({
+            where: { userId: req.user.id },
+            order: [['createdAt', 'DESC']]
+        });
+
+        res.json({
+            success: true,
+            documents
+        });
+    } catch (error) {
+        console.error('Error fetching scan history:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching scan history'
         });
     }
 });

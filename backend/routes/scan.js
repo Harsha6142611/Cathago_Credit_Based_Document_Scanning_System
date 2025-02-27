@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const { authMiddleware } = require('../middleware/authMiddleware');
 const { Document, User } = require('../models');
 const TextMatcher = require('../utils/textMatching');
-const { Op } = require('sequelize');
+const sequelize = require('../config/db');
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
@@ -44,24 +44,27 @@ router.post('/upload', authMiddleware, async (req, res) => {
 
     uploadSingle(req, res, async (err) => {
         try {
-            // Check credits before processing
-            if (req.user.credits <= 0) {
+            if (!req.user) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'User not authenticated'
+                });
+            }
+
+            const user = await User.findByPk(req.user.id);
+            if (user.credits <= 0) {
                 return res.status(403).json({
                     success: false,
-                    message: 'Insufficient credits. Please wait for daily reset or request more credits.',
+                    message: 'Insufficient credits',
                     creditsRequired: true
                 });
             }
 
-            if (err instanceof multer.MulterError) {
+            if (err) {
                 return res.status(400).json({
                     success: false,
-                    message: `Upload error: ${err.message}`
-                });
-            } else if (err) {
-                return res.status(400).json({
-                    success: false,
-                    message: err.message
+                    message: err instanceof multer.MulterError ? 
+                        `Upload error: ${err.message}` : err.message
                 });
             }
 
@@ -72,40 +75,39 @@ router.post('/upload', authMiddleware, async (req, res) => {
                 });
             }
 
-            // Read file content
-            const fileContent = fs.readFileSync(req.file.path, 'utf-8');
-            console.log('File content length:', fileContent.length); // Debug log
+            console.log('Processing file:', req.file.filename); // Debug log
 
-            // Find existing documents for comparison
+            // Process file and find similarities
+            const fileContent = fs.readFileSync(req.file.path, 'utf-8');
             const existingDocs = await Document.findAll({
                 where: {
                     userId: req.user.id,
                     processingStatus: 'processed'
                 }
             });
-            console.log('Found existing documents:', existingDocs.length); // Debug log
 
-            // Find similar documents
-            const similarDocs = await TextMatcher.findSimilarDocuments(
-                fileContent,
-                existingDocs
-            );
-            console.log('Similar documents found:', similarDocs.length); // Debug log
-
+            const contentHash = crypto.createHash('sha256').update(fileContent).digest('hex');
+            
             // Create document record
             const document = await Document.create({
                 userId: req.user.id,
                 filename: req.file.originalname,
                 filePath: req.file.path,
                 fileSize: req.file.size,
-                contentHash: crypto.createHash('sha256').update(fileContent).digest('hex'),
+                contentHash: contentHash,
                 processingStatus: 'processed'
             });
 
-            // Deduct credit
-            await req.user.decrement('credits');
-            await req.user.reload();
+            // Find similar documents
+            const similarDocs = await TextMatcher.findSimilarDocuments(fileContent, existingDocs);
 
+            // Deduct credit
+            await user.decrement('credits');
+            await user.reload();
+
+            console.log('Sending response with similar docs:', similarDocs); // Debug log
+
+            // Create response object
             const response = {
                 success: true,
                 message: 'Document processed successfully',
@@ -115,10 +117,10 @@ router.post('/upload', authMiddleware, async (req, res) => {
                     processingStatus: document.processingStatus
                 },
                 similarDocuments: similarDocs,
-                remainingCredits: req.user.credits
+                remainingCredits: user.credits,
+                timestamp: Date.now()
             };
 
-            console.log('Response:', JSON.stringify(response, null, 2)); // Debug log
             res.status(201).json(response);
 
         } catch (error) {
@@ -126,10 +128,9 @@ router.post('/upload', authMiddleware, async (req, res) => {
             if (req.file) {
                 fs.unlinkSync(req.file.path);
             }
-
             res.status(500).json({
                 success: false,
-                message: error.message || 'Error processing document',
+                message: 'Error processing document',
                 error: process.env.NODE_ENV === 'development' ? error.message : undefined
             });
         }

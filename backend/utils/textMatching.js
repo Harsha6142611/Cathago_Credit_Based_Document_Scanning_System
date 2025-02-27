@@ -64,33 +64,44 @@ class TextMatcher {
     }
 
     // Find similar documents
-    static async findSimilarDocuments(sourceText, documents) {
-        const results = [];
-        
-        for (const doc of documents) {
-            try {
-                const docContent = readFileSync(doc.filePath, 'utf-8');
-                const overallSimilarity = this.calculateSimilarity(sourceText, docContent);
-                const matchingSentences = this.findMatchingSentences(sourceText, docContent);
-                
-                if (overallSimilarity >= 30 || matchingSentences.length > 0) {
-                    results.push({
-                        document: {
-                            id: doc.id,
-                            filename: doc.filename,
-                            overallSimilarity: Math.round(overallSimilarity * 100) / 100,
-                            matchingSentences
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error(`Error reading document ${doc.id}:`, error);
-            }
-        }
+    static async findSimilarDocuments(content, existingDocs) {
+        try {
+            console.log('Finding similar documents for content length:', content.length);
+            console.log('Number of existing docs:', existingDocs.length);
 
-        // Sort by overall similarity
-        results.sort((a, b) => b.document.overallSimilarity - a.document.overallSimilarity);
-        return results;
+            const results = [];
+            
+            for (const doc of existingDocs) {
+                try {
+                    const docContent = readFileSync(doc.filePath, 'utf-8');
+                    const overallSimilarity = this.calculateSimilarity(content, docContent);
+                    const matchingSentences = this.findMatchingSentences(content, docContent);
+                    
+                    if (overallSimilarity >= 30 || matchingSentences.length > 0) {
+                        results.push({
+                            filename: doc.filename,
+                            similarity: Math.round(overallSimilarity),
+                            matches: matchingSentences.map(match => ({
+                                original: match.sentence1,
+                                matched: match.sentence2,
+                                similarity: Math.round(match.similarity)
+                            }))
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Error reading document ${doc.id}:`, error);
+                }
+            }
+
+            // Sort by similarity
+            results.sort((a, b) => b.similarity - a.similarity);
+            
+            console.log('TextMatcher results:', JSON.stringify(results, null, 2));
+            return results;
+        } catch (error) {
+            console.error('Error in findSimilarDocuments:', error);
+            return [];
+        }
     }
 }
 
