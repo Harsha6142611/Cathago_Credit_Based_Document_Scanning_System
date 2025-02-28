@@ -10,7 +10,9 @@ const CONFIG = {
             REGISTER: '/api/auth/register'
         },
         USER: {
-            PROFILE: '/api/user/profile'
+            PROFILE: '/api/user/profile',
+            CREDIT_REQUESTS: '/api/user/credit-requests',
+            SCAN_HISTORY: '/api/user/scan-history'
         },
         SCAN: {
             UPLOAD: '/api/scan/upload',

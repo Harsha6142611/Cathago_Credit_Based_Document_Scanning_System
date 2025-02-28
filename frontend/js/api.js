@@ -74,8 +74,9 @@ class API {
 
     static async getUserProfile() {
         try {
-            const response = await this.request(CONFIG.ROUTES.USER.PROFILE);
-            console.log('Profile response:', response); // Debug log
+            const response = await this.request(CONFIG.ROUTES.USER.PROFILE, {
+                params: { include: 'basic' } // Only fetch basic user info
+            });
             return response;
         } catch (error) {
             console.error('Error in getUserProfile:', error);
@@ -83,25 +84,49 @@ class API {
         }
     }
 
+    static async getUserCreditRequests() {
+        try {
+            const response = await this.request(CONFIG.ROUTES.USER.CREDIT_REQUESTS);
+            return response;
+        } catch (error) {
+            console.error('Error in getUserCreditRequests:', error);
+            throw error;
+        }
+    }
+
+    static async getUserScanHistory() {
+        try {
+            const response = await this.request(CONFIG.ROUTES.USER.SCAN_HISTORY);
+            return response;
+        } catch (error) {
+            console.error('Error in getUserScanHistory:', error);
+            throw error;
+        }
+    }
+
     static async uploadDocument(formData) {
         try {
+            console.log('Making upload request to server');
             const token = localStorage.getItem(CONFIG.TOKEN_KEY);
             const response = await fetch(CONFIG.API_URL + CONFIG.ROUTES.SCAN.UPLOAD, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
                 },
-                body: formData
+                body: formData,
+                credentials: 'same-origin'
             });
 
+            const data = await response.json();
+            console.log('Server response:', data);
+
             if (!response.ok) {
-                const data = await response.json();
                 throw new Error(data.message || 'Upload failed');
             }
 
-            return await response.json();
+            return data;
         } catch (error) {
-            console.error('Upload error:', error);
+            console.error('Upload API error:', error);
             throw error;
         }
     }

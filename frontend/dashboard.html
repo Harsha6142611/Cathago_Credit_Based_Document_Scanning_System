@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Document Scanning System</title>
+    <title>Dashboard - Document Upload System</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -14,17 +14,13 @@
             <nav class="dashboard-nav">
                 <div class="brand">
                     <i class="fas fa-file-search brand-icon"></i>
-                    <h1>Credit-Based Document Scanning System</h1>
+                    <h1>Document Upload System</h1>
                 </div>
                 <div class="user-controls">
-                    <div class="credit-badge">
-                        <i class="fas fa-coins"></i>
-                        <span>Credits: <span id="credit-count">-</span></span>
-                    </div>
-                    <a href="profile.html" class="profile-icon" title="View Profile">
-                        <i class="fas fa-user-circle"></i>
+                    <a href="profile.html" class="btn btn-secondary">
+                        <i class="fas fa-user-circle"></i> Profile
                     </a>
-                    <button onclick="Auth.logout()" class="btn btn-secondary">
+                    <button type="button" class="btn btn-secondary" onclick="Auth.logout();">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </button>
                 </div>
@@ -35,32 +31,44 @@
             <div class="dashboard-card scanner-card">
                 <div class="card-header">
                     <h2 class="section-title">
-                        <i class="fas fa-scanner"></i>
-                        Document Scanner
+                        <i class="fas fa-upload"></i>
+                        Document Upload
                     </h2>
                 </div>
                 <div class="scanner-description">
                     <div class="info-box">
                         <i class="fas fa-info-circle"></i>
                         <div>
-                            <p>Upload your document to check for similarities with our database.</p>
-                            <p>Each scan costs 1 credit.</p>
+                            <p>Upload your document to process.</p>
+                            <p>Visit your profile to check credits and upload history.</p>
                         </div>
                     </div>
                 </div>
-                <div class="upload-area" id="upload-area" onclick="event.preventDefault();">
-                    <div class="upload-content">
-                        <div class="upload-icon">
-                            <i class="fas fa-file-upload"></i>
+                <form id="upload-form" onsubmit="event.preventDefault();">
+                    <div class="upload-area" id="upload-area">
+                        <div class="upload-content">
+                            <div class="upload-icon">
+                                <i class="fas fa-file-upload"></i>
+                            </div>
+                            <div class="upload-text">
+                                <p>Drag & drop your document here or click to browse</p>
+                                <small>Only .txt files are supported</small>
+                            </div>
                         </div>
-                        <div class="upload-text">
-                            <p>Drag & drop your document here or click to browse</p>
-                            <small>Only .txt files are supported</small>
-                        </div>
+                        <input type="file" id="file-input" hidden accept=".txt">
                     </div>
-                    <input type="file" id="file-input" hidden accept=".txt" onchange="event.preventDefault();">
+                    <div id="upload-status"></div>
+                </form>
+            </div>
+
+            <div id="scan-results" class="dashboard-card" style="display: none; margin-top: 20px;">
+                <div class="card-header">
+                    <h3 class="section-title">
+                        <i class="fas fa-search"></i>
+                        Scan Results
+                    </h3>
                 </div>
-                <div id="upload-status" class="upload-status"></div>
+                <div id="results-content"></div>
             </div>
         </main>
     </div>

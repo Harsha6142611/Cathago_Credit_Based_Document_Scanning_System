@@ -1,223 +1,227 @@
 class Dashboard {
     static init() {
-        this.loadUserData();
-        this.setupUploadArea();
+        console.log('Dashboard initialized');
+        this.setupFileUpload();
+        this.loadStoredResults();
+        this.preventFormSubmission();
+        this.setupRefreshWarning();
     }
 
-    static async loadUserData() {
-        try {
-            const response = await API.getUserProfile();
-            if (response.success && response.user) {
-                document.getElementById('credit-count').textContent = response.user.credits;
-                this.updateUploadAreaState();
-            }
-        } catch (error) {
-            console.error('Error loading user data:', error);
+    static preventFormSubmission() {
+        const form = document.getElementById('upload-form');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                return false;
+            });
         }
     }
 
-    static setupUploadArea() {
-        const uploadArea = document.getElementById('upload-area');
+    static setupFileUpload() {
         const fileInput = document.getElementById('file-input');
+        const uploadArea = document.getElementById('upload-area');
 
-        uploadArea.addEventListener('click', (e) => {
+        // Handle file selection
+        fileInput.addEventListener('change', (e) => {
             e.preventDefault();
-            e.stopPropagation();
-            fileInput.click();
+            const file = e.target.files[0];
+            if (file) {
+                this.uploadFile(file);
+            }
         });
 
+        // Handle drag and drop
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            e.stopPropagation();
-            uploadArea.classList.add('highlight');
+            uploadArea.classList.add('dragover');
         });
 
         uploadArea.addEventListener('dragleave', (e) => {
             e.preventDefault();
-            e.stopPropagation();
-            uploadArea.classList.remove('highlight');
+            uploadArea.classList.remove('dragover');
         });
 
-        uploadArea.addEventListener('drop', async (e) => {
+        uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            uploadArea.classList.remove('highlight');
-            
+            uploadArea.classList.remove('dragover');
             const file = e.dataTransfer.files[0];
             if (file) {
-                await this.handleFileUpload(file);
+                this.uploadFile(file);
             }
         });
 
-        fileInput.addEventListener('change', async (e) => {
+        // Handle click to upload
+        uploadArea.addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation();
-            
-            const file = e.target.files[0];
-            if (file) {
-                await this.handleFileUpload(file);
-                fileInput.value = '';
-            }
+            fileInput.click();
         });
     }
 
-    static async handleFileUpload(file) {
+    static async uploadFile(file) {
         const uploadStatus = document.getElementById('upload-status');
-        const credits = parseInt(document.getElementById('credit-count').textContent);
-        
-        if (credits <= 0) {
-            uploadStatus.innerHTML = `
-                <div class="alert alert-danger">
-                    <h3>Insufficient Credits</h3>
-                    <p>You have no credits remaining. Please visit your profile to request more credits.</p>
-                    <a href="profile.html" class="btn btn-primary">Go to Profile</a>
-                </div>
-            `;
-            return;
-        }
-
-        uploadStatus.innerHTML = '<div class="alert">Uploading and analyzing document...</div>';
+        const scanResults = document.getElementById('scan-results');
 
         try {
-            if (!file.name.endsWith('.txt')) {
-                throw new Error('Only .txt files are allowed');
-            }
+            console.log('Starting file upload:', file.name);
+            uploadStatus.innerHTML = '<div class="alert alert-info">Processing document...</div>';
+            scanResults.style.display = 'none';
 
             const formData = new FormData();
             formData.append('document', file);
 
             const response = await API.uploadDocument(formData);
-            
+            console.log('Upload response:', response);
+
             if (response.success) {
-                this.displayUploadResults(response, file.name);
-                this.loadUserData(); // Refresh credit count
+                uploadStatus.innerHTML = '<div class="alert alert-success">Document processed successfully!</div>';
+                
+                // Store results in localStorage
+                const dataToStore = {
+                    timestamp: Date.now(),
+                    data: response
+                };
+                console.log('Storing data in localStorage:', dataToStore);
+                localStorage.setItem('scanResults', JSON.stringify(dataToStore));
+
+                // Display results
+                this.displayResults(response);
             }
         } catch (error) {
             console.error('Upload error:', error);
-            uploadStatus.innerHTML = `
-                <div class="alert alert-danger">
-                    <h3>Upload Failed</h3>
-                    <p>${error.message || 'Error uploading document'}</p>
-                </div>
-            `;
+            uploadStatus.innerHTML = `<div class="alert alert-danger">${error.message || 'Upload failed'}</div>`;
         }
     }
 
-    static updateUploadAreaState() {
-        const credits = parseInt(document.getElementById('credit-count').textContent);
-        const uploadArea = document.getElementById('upload-area');
-        
-        if (credits <= 0) {
-            uploadArea.classList.add('disabled');
-            uploadArea.innerHTML = `
-                <div class="upload-icon">📄</div>
-                <p>No credits available</p>
-                <small>Please visit your profile to request more credits</small>
+    static loadStoredResults() {
+        console.log('Loading stored results');
+        const stored = localStorage.getItem('scanResults');
+        if (stored) {
+            console.log('Found stored results:', stored);
+            try {
+                const { timestamp, data } = JSON.parse(stored);
+                if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+                    console.log('Displaying stored results:', data);
+                    this.displayResults(data);
+                } else {
+                    console.log('Stored results are too old, removing');
+                    localStorage.removeItem('scanResults');
+                }
+            } catch (error) {
+                console.error('Error parsing stored results:', error);
+                localStorage.removeItem('scanResults');
+            }
+        } else {
+            console.log('No stored results found');
+        }
+    }
+
+    static setupRefreshWarning() {
+        window.addEventListener('beforeunload', (e) => {
+            const scanResults = document.getElementById('scan-results');
+            // If scan results are visible, show warning
+            if (scanResults && scanResults.style.display !== 'none') {
+                e.preventDefault();
+                e.returnValue = 'You have scan results on this page. Are you sure you want to leave?';
+                return e.returnValue;
+            }
+        });
+    }
+
+    static displayResults(response) {
+        console.log('Displaying results:', response);
+        const scanResults = document.getElementById('scan-results');
+        const resultsContent = document.getElementById('results-content');
+
+        if (!scanResults || !resultsContent) {
+            console.error('Required DOM elements not found');
+            return;
+        }
+
+        resultsContent.innerHTML = '';
+
+        // Add a timestamp to the results
+        const timestamp = new Date(response.timestamp).toLocaleString();
+        const headerHtml = `
+            <div class="results-header">
+                <div class="scan-info">
+                    <p>Scan completed at: ${timestamp}</p>
+                    <p>Document: ${response.document.filename}</p>
+                </div>
+            </div>
+        `;
+
+        if (!response.similarDocuments || response.similarDocuments.length === 0) {
+            resultsContent.innerHTML = `
+                ${headerHtml}
+                <div class="alert alert-info">
+                    No similar documents found in the database.
+                </div>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Warning: Refreshing this page may clear the results.
+                </div>
             `;
         } else {
-            uploadArea.classList.remove('disabled');
-            uploadArea.innerHTML = `
-                <div class="upload-icon">📄</div>
-                <p>Drag & drop your document here or click to browse</p>
-                <small>Only .txt files are supported</small>
-                <input type="file" id="file-input" hidden accept=".txt" onchange="event.preventDefault();">
-            `;
-        }
-    }
-
-    static displayUploadResults(response, fileName) {
-        const uploadStatus = document.getElementById('upload-status');
-        
-        try {
-            if (!response.similarDocuments) {
-                throw new Error('No similarity data found');
-            }
-
-            const similarDocsHtml = this.generateSimilarityResultsHtml(response.similarDocuments);
-            
-            uploadStatus.innerHTML = `
-                <div class="alert alert-success upload-result">
-                    <div class="upload-header">
-                        <h3>Upload Successful!</h3>
-                        <p>Document: ${fileName}</p>
-                        <p>Remaining credits: ${response.remainingCredits}</p>
+            const resultsHtml = `
+                ${headerHtml}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Warning: Refreshing this page may clear the results.
+                </div>
+                <div class="similarity-summary">
+                    <h4>Found ${response.similarDocuments.length} similar document(s)</h4>
+                </div>
+                ${response.similarDocuments.map(doc => `
+                    <div class="result-item">
+                        <div class="result-header">
+                            <h4>Match found in: ${doc.filename}</h4>
+                            <div class="similarity-badge ${this.getSimilarityClass(doc.similarity)}">
+                                ${doc.similarity}% Similar
+                            </div>
+                        </div>
+                        ${this.formatMatches(doc.matches)}
                     </div>
-                    ${similarDocsHtml}
-                </div>
+                `).join('')}
             `;
-        } catch (error) {
-            console.error('Error displaying results:', error);
-            uploadStatus.innerHTML = `
-                <div class="alert alert-danger">
-                    <h3>Error Displaying Results</h3>
-                    <p>${error.message || 'There was an error showing the results. Please try again.'}</p>
-                </div>
-            `;
+
+            resultsContent.innerHTML = resultsHtml;
         }
+
+        scanResults.style.display = 'block';
+        console.log('Results displayed');
     }
 
-    static generateSimilarityResultsHtml(documents) {
-        if (!documents || documents.length === 0) {
-            return `
-                <div class="similarity-results">
-                    <h3>Similarity Analysis</h3>
-                    <p>No similar documents found</p>
-                </div>
-            `;
-        }
+    static getSimilarityClass(similarity) {
+        if (similarity >= 75) return 'high-similarity';
+        if (similarity >= 50) return 'medium-similarity';
+        return 'low-similarity';
+    }
+
+    static formatMatches(matches) {
+        if (!matches || matches.length === 0) return '';
 
         return `
-            <div class="similarity-results">
-                <h3>Similarity Analysis Results</h3>
-                ${documents.map(({ document }) => `
-                    <div class="similar-doc-result">
-                        <div class="doc-header">
-                            <h4>${document.filename}</h4>
-                            <span class="similarity-badge ${this.getSimilarityClass(document.overallSimilarity)}">
-                                ${document.overallSimilarity}% Similar
-                            </span>
+            <div class="matches-container">
+                ${matches.map(match => `
+                    <div class="match-detail">
+                        <div class="match-text">
+                            <strong>Original Text:</strong>
+                            <pre>${match.original}</pre>
                         </div>
-                        ${this.generateMatchingSentencesHtml(document.matchingSentences)}
+                        <div class="match-text">
+                            <strong>Matched Text:</strong>
+                            <pre>${match.matched}</pre>
+                        </div>
                     </div>
                 `).join('')}
             </div>
         `;
     }
-
-    static getSimilarityClass(similarity) {
-        if (similarity >= 80) return 'high-similarity';
-        if (similarity >= 50) return 'medium-similarity';
-        return 'low-similarity';
-    }
-
-    static generateMatchingSentencesHtml(sentences) {
-        if (!sentences || sentences.length === 0) {
-            return '<p>No matching sentences found</p>';
-        }
-
-        return `
-            <div class="matching-sentences">
-                <h5>Matching Content (${sentences.length} matches):</h5>
-                <div class="matches-container">
-                    ${sentences.map(match => `
-                        <div class="match-pair">
-                            <div class="match-source">
-                                <strong>Source:</strong> 
-                                <span class="match-text">${match.sentence1}</span>
-                            </div>
-                            <div class="match-target">
-                                <strong>Match:</strong> 
-                                <span class="match-text">${match.sentence2}</span>
-                                <span class="match-similarity">${match.similarity}% match</span>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize dashboard when DOM is loaded
+document.addEventListener('DOMContentLoaded', (e) => {
+    e.preventDefault();
     Dashboard.init();
 }); 

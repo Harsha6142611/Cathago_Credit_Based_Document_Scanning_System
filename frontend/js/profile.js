@@ -3,6 +3,52 @@ class Profile {
         this.loadUserData();
         this.setupTabs();
         this.setupCreditRequestForm();
+        this.setupTabContentLoading();
+        
+        // Add reload warning
+        window.addEventListener('beforeunload', (e) => {
+            // Check if there's an ongoing credit request or form being filled
+            const creditForm = document.getElementById('credit-request-form');
+            const hasUnsubmittedForm = creditForm && (
+                creditForm.credits.value || 
+                creditForm.reason.value
+            );
+            
+            if (hasUnsubmittedForm) {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave this page? Your data may be lost.';
+                return e.returnValue;
+            }
+        });
+
+        // Add data persistence on page hide
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                // Save form data
+                const creditForm = document.getElementById('credit-request-form');
+                if (creditForm) {
+                    localStorage.setItem('creditFormData', JSON.stringify({
+                        credits: creditForm.credits.value,
+                        reason: creditForm.reason.value
+                    }));
+                }
+            }
+        });
+
+        // Restore form data if exists
+        const savedFormData = localStorage.getItem('creditFormData');
+        if (savedFormData) {
+            try {
+                const { credits, reason } = JSON.parse(savedFormData);
+                const creditForm = document.getElementById('credit-request-form');
+                if (creditForm) {
+                    creditForm.credits.value = credits;
+                    creditForm.reason.value = reason;
+                }
+            } catch (error) {
+                console.error('Error restoring form data:', error);
+            }
+        }
     }
 
     static async loadUserData() {
@@ -12,9 +58,6 @@ class Profile {
                 document.getElementById('username').textContent = response.user.username;
                 document.getElementById('credit-count').textContent = response.user.credits;
                 document.getElementById('profile-credits').textContent = response.user.credits;
-                
-                this.loadScanHistory();
-                this.loadCreditRequestStatus();
             }
         } catch (error) {
             console.error('Error loading user data:', error);
@@ -31,22 +74,39 @@ class Profile {
                 
                 // Add active class to clicked tab and corresponding pane
                 tab.classList.add('active');
-                document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
+                const targetPane = document.getElementById(`${tab.dataset.tab}-tab`);
+                targetPane.classList.add('active');
+
+                // Load content based on tab
+                switch(tab.dataset.tab) {
+                    case 'history':
+                        this.loadScanHistory();
+                        break;
+                    case 'requests':
+                        this.loadCreditRequestStatus();
+                        break;
+                }
             });
         });
+
+        // Load initial tab content if it's active
+        const activeTab = document.querySelector('.tab-btn.active');
+        if (activeTab && activeTab.dataset.tab === 'requests') {
+            this.loadCreditRequestStatus();
+        }
     }
 
     static async loadScanHistory() {
         try {
-            const response = await API.getUserProfile();
+            const response = await API.getUserScanHistory();
             const scanHistory = document.getElementById('scan-history');
             
-            if (!response.success || !response.user.documents) {
+            if (!response.success || !response.documents) {
                 scanHistory.innerHTML = '<li>No scans yet</li>';
                 return;
             }
 
-            const documents = response.user.documents;
+            const documents = response.documents;
             if (documents.length === 0) {
                 scanHistory.innerHTML = '<li>No scans yet</li>';
                 return;
@@ -94,7 +154,12 @@ class Profile {
                     if (response.success) {
                         alert('Credit request submitted successfully');
                         form.reset();
-                        await this.loadCreditRequestStatus();
+                        this.clearSavedFormData(); // Clear saved form data
+                        // Only reload credit requests if we're on the requests tab
+                        const requestsTab = document.querySelector('.tab-btn[data-tab="requests"]');
+                        if (requestsTab.classList.contains('active')) {
+                            await this.loadCreditRequestStatus();
+                        }
                     }
                 } catch (error) {
                     console.error('Credit request error:', error);
@@ -106,15 +171,15 @@ class Profile {
 
     static async loadCreditRequestStatus() {
         try {
-            const response = await API.getUserProfile();
+            const response = await API.getUserCreditRequests();
             const container = document.getElementById('credit-requests-status');
             
-            if (!response.success || !response.user.creditRequests) {
+            if (!response.success || !response.creditRequests) {
                 container.innerHTML = '<p>No credit requests found</p>';
                 return;
             }
 
-            const requests = response.user.creditRequests;
+            const requests = response.creditRequests;
             if (requests.length === 0) {
                 container.innerHTML = '<p>No credit requests found</p>';
                 return;
@@ -143,6 +208,42 @@ class Profile {
             document.getElementById('credit-requests-status').innerHTML = 
                 '<p>Error loading credit requests</p>';
         }
+    }
+
+    static setupTabContentLoading() {
+        const tabs = document.querySelectorAll('.tab-btn');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs and panes
+                tabs.forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding pane
+                tab.classList.add('active');
+                const targetPane = document.getElementById(`${tab.dataset.tab}-tab`);
+                targetPane.classList.add('active');
+
+                // Load content based on tab
+                switch(tab.dataset.tab) {
+                    case 'history':
+                        this.loadScanHistory();
+                        break;
+                    case 'requests':
+                        this.loadCreditRequestStatus();
+                        break;
+                }
+            });
+        });
+
+        // Load initial tab content if it's active
+        const activeTab = document.querySelector('.tab-btn.active');
+        if (activeTab && activeTab.dataset.tab === 'requests') {
+            this.loadCreditRequestStatus();
+        }
+    }
+
+    static clearSavedFormData() {
+        localStorage.removeItem('creditFormData');
     }
 }
 
